@@ -709,7 +709,23 @@ function setupControls() {
   });
 }
 
-function showError(msg) {
+// ── AUTO FULLSCREEN ──
+function goFullscreen() {
+  const el = document.documentElement;
+  if (el.requestFullscreen) el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+}
+
+// Try on load, and again on first tap (browsers require user gesture)
+window.addEventListener('load', () => {
+  goFullscreen();
+});
+document.addEventListener('click', () => {
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    goFullscreen();
+  }
+}, { once: false });
+
   const t = document.getElementById('error-toast');
   t.textContent = msg; t.style.display = 'block';
   setTimeout(() => t.style.display = 'none', 3000);
