@@ -709,22 +709,51 @@ function setupControls() {
   });
 }
 
-// ── AUTO FULLSCREEN ──
+// ── FULLSCREEN VIA VIDEO TRICK ──
 function goFullscreen() {
+  // Try standard fullscreen first
   const el = document.documentElement;
-  if (el.requestFullscreen) el.requestFullscreen();
-  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  if (el.requestFullscreen) { el.requestFullscreen(); return; }
+  if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); return; }
+
+  // Fallback: use a hidden video element to trigger native fullscreen
+  let vid = document.getElementById('_fsvid');
+  if (!vid) {
+    vid = document.createElement('video');
+    vid.id = '_fsvid';
+    vid.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:-1;opacity:0;pointer-events:none;';
+    vid.setAttribute('playsinline', '');
+    vid.setAttribute('muted', '');
+    vid.setAttribute('loop', '');
+    // 1x1 transparent mp4 as base64
+    vid.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAA' +
+      'CBtZGF0AAACrGxpYmZhYWMgMS4yOS41AABiAGQAAAA=';
+    document.body.appendChild(vid);
+  }
+  vid.play().catch(() => {});
+  if (vid.requestFullscreen) vid.requestFullscreen();
+  else if (vid.webkitEnterFullscreen) vid.webkitEnterFullscreen();
+  else if (vid.webkitRequestFullscreen) vid.webkitRequestFullscreen();
+
+  // Once fullscreen granted on video, exit video fullscreen and re-request on page
+  vid.addEventListener('webkitfullscreenchange', () => {
+    if (document.webkitFullscreenElement === vid) {
+      document.webkitExitFullscreen && document.webkitExitFullscreen();
+      setTimeout(() => {
+        document.documentElement.webkitRequestFullscreen &&
+        document.documentElement.webkitRequestFullscreen();
+      }, 100);
+    }
+  }, { once: true });
 }
 
-// Try on load, and again on first tap (browsers require user gesture)
-window.addEventListener('load', () => {
-  goFullscreen();
-});
 document.addEventListener('click', () => {
   if (!document.fullscreenElement && !document.webkitFullscreenElement) {
     goFullscreen();
   }
-}, { once: false });
+});
+
+window.addEventListener('load', goFullscreen);
 
   const t = document.getElementById('error-toast');
   t.textContent = msg; t.style.display = 'block';
