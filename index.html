@@ -603,66 +603,33 @@ function reauth() {
 }
 
 async function fetchRecentlyPlayed() {
-  const data = await api('/me/player/recently-played?limit=20');
+  const data = await api('/me/player/recently-played?limit=10');
   if (!data || !data.items) return;
 
-  // Extract unique contexts (playlists/albums), falling back to albums from tracks
-  const seen = new Set();
-  const contexts = [];
-
-  for (const item of data.items) {
-    const ctx = item.context;
-    const track = item.track;
-
-    if (ctx && (ctx.type === 'playlist' || ctx.type === 'album')) {
-      const key = ctx.uri;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      contexts.push({ uri: ctx.uri, type: ctx.type, track });
-    } else {
-      // No context — fall back to showing the album
-      const key = track.album.uri;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      contexts.push({ uri: track.album.uri, type: 'album', track });
-    }
-
-    if (contexts.length >= 3) break;
-  }
-
-  // Fetch details for each context
   const row = document.getElementById('recent-row');
   row.innerHTML = '';
+  const seen = new Set();
 
-  for (const ctx of contexts) {
-    let name, artist, img, playUri;
+  for (const item of data.items) {
+    const track = item.track;
+    const albumId = track.album.id;
+    if (seen.has(albumId)) continue;
+    seen.add(albumId);
 
-    if (ctx.type === 'playlist') {
-      const id = ctx.uri.split(':').pop();
-      const pl = await api(`/playlists/${id}?fields=name,images,owner`);
-      if (!pl) continue;
-      name = pl.name;
-      artist = pl.owner?.display_name || 'Spotify';
-      img = pl.images?.[0]?.url;
-      playUri = ctx.uri;
-    } else {
-      // album — use track data we already have
-      name = ctx.track.album.name;
-      artist = ctx.track.artists[0].name;
-      img = ctx.track.album.images[1]?.url || ctx.track.album.images[0]?.url;
-      playUri = ctx.uri;
-    }
-
-    if (!img) continue;
+    const name = track.album.name;
+    const artist = track.artists[0].name;
+    const img = track.album.images[1]?.url || track.album.images[0]?.url;
+    const contextUri = item.context?.uri || track.album.uri;
 
     const el = document.createElement('div');
     el.className = 'recent-item';
     el.innerHTML = `<img src="${img}" alt="${name}"><div class="recent-track">${name}</div><div class="recent-artist">${artist}</div>`;
     el.addEventListener('click', async () => {
-      await api('/me/player/play', 'PUT', { context_uri: playUri });
+      await api('/me/player/play', 'PUT', { context_uri: contextUri });
       setTimeout(fetchPlayback, 400);
     });
     row.appendChild(el);
+    if (row.children.length >= 3) break;
   }
 }
 
