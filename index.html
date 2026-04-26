@@ -781,6 +781,7 @@ document.addEventListener('click', () => {
 
 window.addEventListener('load', goFullscreen);
 
+function showError(msg) {
   const t = document.getElementById('error-toast');
   t.textContent = msg; t.style.display = 'block';
   setTimeout(() => t.style.display = 'none', 3000);
